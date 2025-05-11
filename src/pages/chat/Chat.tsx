@@ -1,3 +1,4 @@
+import React from "react";
 import {
 	Stack,
 	Textarea,
@@ -64,10 +65,30 @@ export const Chat = () => {
 		setEditingMessage(null);
 
 		try {
+			// Construct message history
+			const getMessageHistory = (
+				allMessages: ChatTree,
+				currentMessage: ChatMessage,
+			): Message[] => {
+				const history: Message[] = [];
+				let msg: ChatMessage | undefined = currentMessage;
+				while (msg) {
+					history.unshift({ role: msg.role, content: msg.content });
+					msg = allMessages.find((m) => m.id === msg!.parentId);
+				}
+				// Ensure the first message is 'user' if it's not system, or handle system message if present
+				// For now, let's assume the API handles the roles correctly based on the order.
+				// If a system message is needed, it should be explicitly added or handled by the API.
+				return history;
+			};
+
+			const messagesForApi = getMessageHistory(chatTree, newUserMessage);
+
+
 			const response = await fetch("/api/chat", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ message: newUserMessage.content }),
+				body: JSON.stringify({ messages: messagesForApi }),
 			});
 
 			if (!response.ok) {
@@ -90,7 +111,7 @@ export const Chat = () => {
 				id: assistantMessageId,
 				parentId: userMessageId,
 				role: "assistant",
-				content: data.message,
+				content: data.message.content,
 			};
 			setChatTree((prev) => [...prev, assistantMessage]);
 			// After sending, the main chat view should show the branch containing this new assistant message.
@@ -133,36 +154,145 @@ export const Chat = () => {
 		setCurrentParentId(previousParentIdBeforeEdit);
 	};
 
-	// This function is for the main chat display area
-	const renderChatMessages = (parentIdToDisplay: string | null, level = 0) => {
-		return chatTree
-			.filter((msg) => msg.parentId === parentIdToDisplay)
-			.map((message) => (
-				<Box key={message.id} style={{ marginLeft: `${level * 20}px` }}>
-					<Paper shadow="xs" p="md" mb="sm" withBorder>
-						<Group justify="space-between">
-							<Text c={message.role === "user" ? "blue" : "green"} fw={500}>
-								{message.role === "user" ? "You" : "Assistant"}
-							</Text>
-							<Group gap="xs">
-								{message.role === "user" && message.id !== editingMessage?.id && (
-									<ActionIcon variant="subtle" onClick={() => handleEditClick(message)} title="Edit & Branch">
-										<IconPencil size={18} />
-									</ActionIcon>
-								)}
-								{message.role === "assistant" && (
-									<ActionIcon variant="subtle" onClick={() => handleReplyClick(message.id)} title="Reply to this">
-										<IconMessageReply size={18} />
-									</ActionIcon>
-								)}
-							</Group>
-						</Group>
-						<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
-					</Paper>
-					{/* Recursively render children in the main chat view */}
-					{renderChatMessages(message.id, level + 1)}
-				</Box>
-			));
+	// Helper to render the UI for a single message item
+	const renderSingleMessageItem = (
+		message: ChatMessage,
+		currentEditingMessage: ChatMessage | null,
+		onEditClick: (msg: ChatMessage) => void,
+		onReplyClick: (id: string) => void,
+	) => (
+		<Paper shadow="xs" p="md" mb="sm" withBorder>
+			<Group justify="space-between">
+				<Text c={message.role === "user" ? "blue" : "green"} fw={500}>
+					{message.role === "user" ? "You" : "Assistant"}
+				</Text>
+				<Group gap="xs">
+					{message.role === "user" && message.id !== currentEditingMessage?.id && (
+						<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
+							<IconPencil size={18} />
+						</ActionIcon>
+					)}
+					<ActionIcon variant="subtle" onClick={() => onReplyClick(message.id)} title="Reply to this">
+						<IconMessageReply size={18} />
+					</ActionIcon>
+				</Group>
+			</Group>
+			<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
+		</Paper>
+	);
+
+	// Recursive function to render a message and its children (a full branch)
+	const renderMessageBranch = (
+		message: ChatMessage,
+		allMessages: ChatTree,
+		level: number,
+		currentEditingMessage: ChatMessage | null,
+		onEditClick: (msg: ChatMessage) => void,
+		onReplyClick: (id: string) => void,
+	): JSX.Element => {
+		const children = allMessages.filter((child) => child.parentId === message.id);
+		return (
+			<Box key={message.id} style={{ marginLeft: `${level * 20}px` }}>
+				{renderSingleMessageItem(message, currentEditingMessage, onEditClick, onReplyClick)}
+				{children.map((childMsg) =>
+					renderMessageBranch(
+						childMsg,
+						allMessages,
+						level + 1,
+						currentEditingMessage,
+						onEditClick,
+						onReplyClick,
+					),
+				)}
+			</Box>
+		);
+	};
+
+	// Main rendering logic for the chat area
+	const DisplayedChatMessages = ({
+		chatTree,
+		currentParentId,
+		editingMessage,
+		handleEditClick,
+		handleReplyClick,
+	}: {
+		chatTree: ChatTree;
+		currentParentId: string | null;
+		editingMessage: ChatMessage | null;
+		handleEditClick: (msg: ChatMessage) => void;
+		handleReplyClick: (id: string) => void;
+	}) => {
+		if (currentParentId === null) {
+			// If no specific thread is selected, display all root threads
+			return (
+				<>
+					{chatTree
+						.filter((msg) => msg.parentId === null)
+						.map((rootMessage) =>
+							renderMessageBranch(
+								rootMessage,
+								chatTree,
+								0,
+								editingMessage,
+								handleEditClick,
+								handleReplyClick,
+							),
+						)}
+					{chatTree.filter((m) => m.parentId === null).length === 0 && (
+						<Text c="dimmed">No messages yet. Start a new conversation!</Text>
+					)}
+				</>
+			);
+		}
+
+		// A specific thread (currentParentId) is selected.
+		// Display the path from root to currentParentId, and for each message in the path,
+		// display its other children branches.
+		const ancestorPath: ChatMessage[] = [];
+		let msg = chatTree.find((m) => m.id === currentParentId);
+		while (msg) {
+			ancestorPath.unshift(msg); // Adds to the beginning: [root, ..., parent, currentParentId]
+			msg = chatTree.find((m) => m.id === msg!.parentId);
+		}
+
+		if (ancestorPath.length === 0 && currentParentId !== null) {
+			return <Text c="dimmed">Selected message not found.</Text>;
+		}
+
+		return (
+			<>
+				{ancestorPath.map((ancestorMessage, index) => {
+					const sideBranches = chatTree.filter((child) => {
+						if (child.parentId !== ancestorMessage.id) return false;
+						if (index + 1 < ancestorPath.length && child.id === ancestorPath[index + 1].id) {
+							return false;
+						}
+						return true;
+					});
+
+					return (
+						<Box key={ancestorMessage.id}>
+							{renderSingleMessageItem(
+								ancestorMessage,
+								editingMessage,
+								handleEditClick,
+								handleReplyClick,
+							)}
+							{sideBranches.map((branchHead) =>
+								renderMessageBranch(
+									branchHead,
+									chatTree,
+									1, // Side branches start at level 1
+									editingMessage,
+									handleEditClick,
+									handleReplyClick,
+								),
+							)}
+						</Box>
+					);
+				})}
+			</>
+		);
 	};
 
 	const handleSidebarNodeSelect = (nodeId: string | null) => {
@@ -180,17 +310,13 @@ export const Chat = () => {
 			/>
 			<Stack style={{ flexGrow: 1, height: "100vh", padding: "1rem" }}>
 				<ScrollArea viewportRef={scrollAreaRef} style={{ flexGrow: 1, marginBottom: "1rem" }}>
-					{/* The main chat view now renders children of currentParentId, selected via sidebar or interaction */}
-					{renderChatMessages(currentParentId, 0)}
-
-					{/* "Start New Thread" button is now primarily in the sidebar.
-              We might want a visual cue in the main area if no thread is selected.
-              For now, if currentParentId is null, renderChatMessages will show top-level messages.
-          */}
-					{/* Example: if currentParentId is null, show all top-level threads */}
-					{/* {currentParentId === null && chatTree.filter(m => m.parentId === null).length === 0 && (
-            <Text c="dimmed">No messages yet. Start a new conversation!</Text>
-          )} */}
+					<DisplayedChatMessages
+						chatTree={chatTree}
+						currentParentId={currentParentId}
+						editingMessage={editingMessage}
+						handleEditClick={handleEditClick}
+						handleReplyClick={handleReplyClick}
+					/>
 				</ScrollArea>
 				<Group>
 					<Textarea
