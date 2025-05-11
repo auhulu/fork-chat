@@ -267,36 +267,33 @@ export const Chat = () => {
 
 		return (
 			<>
-				{ancestorPath.map((ancestorMessage, index) => {
-					const sideBranches = chatTree.filter((child) => {
-						if (child.parentId !== ancestorMessage.id) return false;
-						if (index + 1 < ancestorPath.length && child.id === ancestorPath[index + 1].id) {
-							return false;
-						}
-						return true;
-					});
-
-					return (
-						<Box key={ancestorMessage.id}>
-							{renderSingleMessageItem(
-								ancestorMessage,
-								editingMessage,
-								handleEditClick,
-								handleReplyClick,
-							)}
-							{sideBranches.map((branchHead) =>
-								renderMessageBranch(
-									branchHead,
-									chatTree,
-									1, // Side branches start at level 1
-									editingMessage,
-									handleEditClick,
-									handleReplyClick,
-								),
-							)}
-						</Box>
-					);
-				})}
+				{ancestorPath.map((ancestorMessage, index) => (
+					<Box key={ancestorMessage.id}>
+						{renderSingleMessageItem(
+							ancestorMessage,
+							editingMessage,
+							handleEditClick,
+							handleReplyClick,
+						)}
+						{/* If the current ancestorMessage is the last in the path (i.e., it's the currentParentId message),
+						    then render its children using renderMessageBranch.
+						    This ensures that only the direct lineage and the children of the selected node are shown.
+						*/}
+						{index === ancestorPath.length - 1 &&
+							chatTree
+								.filter((child) => child.parentId === ancestorMessage.id)
+								.map((childMsg) =>
+									renderMessageBranch(
+										childMsg,
+										chatTree,
+										1, // Children of the selected node start at level 1 for indentation
+										editingMessage,
+										handleEditClick,
+										handleReplyClick,
+									),
+								)}
+					</Box>
+				))}
 			</>
 		);
 	};
