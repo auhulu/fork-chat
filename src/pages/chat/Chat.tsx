@@ -13,15 +13,10 @@ import {
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Message } from "../../types/Message";
+import { Message, ChatMessage, ChatTree } from "../../types/Message";
 import { v4 as uuidv4 } from "uuid";
-import { IconMessage, IconMessageReply, IconPencil } from "@tabler/icons-react";
+import { IconMessage, IconPencil } from "@tabler/icons-react"; // IconMessageReply is not used
 import { ChatSidebar } from "../../components/ChatSidebar"; // Import the sidebar
-
-// ChatMessage type is used by both Chat and ChatSidebar.
-// Consider moving to a shared types file in a larger project.
-export type ChatMessage = Message & { id: string; parentId: string | null };
-export type ChatTree = ChatMessage[];
 
 export const Chat = () => {
 	const [chatTree, setChatTree] = useState<ChatTree>([]);
@@ -54,10 +49,7 @@ export const Chat = () => {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ messages }),
 			});
-			if (!response.ok) {
-				const errorResponse = await response.json().catch(() => ({ error: "Unknown API error" }));
-				throw new Error(errorResponse.error || response.statusText);
-			}
+			if (!response.ok) throw new Error('エラーが発生しました');
 			return response.json();
 		},
 		onSuccess: (data: { message: Message }, variables: { messages: Message[]; userMessageId: string }) => {
@@ -71,79 +63,62 @@ export const Chat = () => {
 			setChatTree((prev) => [...prev, assistantMessage]);
 			setCurrentParentId(assistantMessageId);
 		},
-		onError: (error: Error, variables: { messages: Message[]; userMessageId: string }) => {
-			console.error("Failed to send message:", error);
-			const assistantErrorMessageId = uuidv4();
-			const assistantErrorMessage: ChatMessage = {
-				id: assistantErrorMessageId,
-				parentId: variables.userMessageId,
-				role: "assistant",
-				content: `Error: ${error.message}`,
-			};
-			setChatTree((prev) => [...prev, assistantErrorMessage]);
-			setCurrentParentId(assistantErrorMessageId);
-		},
 	});
 
 	const handleSendMessage = async () => {
 		if (!input.trim()) return;
 
-		const newContent = input;
-		let newParentIdForUserMessage: string | null = null;
-		let userMessageId = uuidv4(); // ID for the new or edited message
+		const content = input.trim();
+		const userMessageId = uuidv4();
+		let parentId: string | null;
 
 		if (editingMessage) {
-			newParentIdForUserMessage = editingMessage.parentId;
+			parentId = editingMessage.parentId;
 		} else if (replyTargetId) {
-			newParentIdForUserMessage = replyTargetId;
+			parentId = replyTargetId;
 		} else {
-			newParentIdForUserMessage = currentParentId;
+			parentId = currentParentId;
 		}
 
 		const newUserMessage: ChatMessage = {
 			id: userMessageId,
-			parentId: newParentIdForUserMessage,
+			parentId,
 			role: "user",
-			content: newContent,
+			content,
 		};
 
-		const updatedChatTreeWithUserMessage = [...chatTree, newUserMessage];
-		setChatTree(updatedChatTreeWithUserMessage);
+		setChatTree((prevTree) => [...prevTree, newUserMessage]);
 		setInput("");
 		setEditingMessage(null);
-		setReplyTargetId(null); // Reset reply target after sending
+		setReplyTargetId(null);
 
 		const getMessageHistory = (
 			allMessages: ChatTree,
-			currentMessage: ChatMessage,
+			currentMsg: ChatMessage,
 		): Message[] => {
 			const history: Message[] = [];
-			let msg: ChatMessage | undefined = currentMessage;
+			let msg: ChatMessage | undefined = currentMsg;
 			while (msg) {
 				history.unshift({ role: msg.role, content: msg.content });
 				msg = allMessages.find((m) => m.id === msg!.parentId);
 			}
 			return history;
 		};
+		// Pass the latest chatTree to getMessageHistory
+		const messagesForApi = getMessageHistory([...chatTree, newUserMessage], newUserMessage);
 
-		const messagesForApi = getMessageHistory(updatedChatTreeWithUserMessage, newUserMessage);
-
-		sendMessageMutation.mutate({ messages: messagesForApi, userMessageId: newUserMessage.id });
+		sendMessageMutation.mutate({ messages: messagesForApi, userMessageId });
 	};
 
 	const handleReplyClick = (messageId: string) => {
 		setReplyTargetId(messageId); // Set the target for the next reply
 		setEditingMessage(null); // Ensure not in editing mode
 		setInput(""); // Clear input for fresh reply
-		// Do not change currentParentId here to keep the current view stable
 	};
 
 	const handleEditClick = (messageToEdit: ChatMessage) => {
 		setPreviousParentIdBeforeEdit(currentParentId);
 		setInput(messageToEdit.content);
-		// When editing, the new message will branch from the *original parent* of the message being edited.
-		// The main chat view should show the context of where this new branch will appear.
-		// setCurrentParentId(messageToEdit.parentId); // 編集モードでも表示ブランチは変更しない
 		setEditingMessage(messageToEdit);
 	};
 

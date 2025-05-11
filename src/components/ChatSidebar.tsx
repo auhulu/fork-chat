@@ -1,7 +1,7 @@
 import { Box, Text, NavLink, ScrollArea } from "@mantine/core";
 // Message type is part of ChatMessage now
 import { IconPointFilled } from "@tabler/icons-react";
-import type { ChatMessage, ChatTree } from "../pages/chat/Chat"; // Import types
+import type { ChatMessage, ChatTree } from "../types/Message"; // Import types from the correct location
 
 interface ChatSidebarProps {
 	chatTree: ChatTree;
