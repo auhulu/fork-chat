@@ -12,6 +12,7 @@ import {
 	Alert,
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Message } from "../../types/Message";
 import { v4 as uuidv4 } from "uuid";
 import { IconMessageReply, IconPencil } from "@tabler/icons-react";
@@ -41,97 +42,87 @@ export const Chat = () => {
 		}
 	}, [chatTree, currentParentId]); // Also scroll when currentParentId changes, to show the top of the new branch
 
+	const sendMessageMutation = useMutation<
+		{ message: Message }, // TData: API response type
+		Error,                // TError: Error type
+		{ messages: Message[]; userMessageId: string } // TVariables: Variables type
+	>({
+		mutationFn: async ({ messages, userMessageId }: { messages: Message[]; userMessageId: string }) => {
+			const response = await fetch("/api/chat", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ messages }),
+			});
+			if (!response.ok) {
+				const errorResponse = await response.json().catch(() => ({ error: "Unknown API error" }));
+				throw new Error(errorResponse.error || response.statusText);
+			}
+			return response.json();
+		},
+		onSuccess: (data: { message: Message }, variables: { messages: Message[]; userMessageId: string }) => {
+			const assistantMessageId = uuidv4();
+			const assistantMessage: ChatMessage = {
+				id: assistantMessageId,
+				parentId: variables.userMessageId,
+				role: "assistant",
+				content: data.message.content,
+			};
+			setChatTree((prev) => [...prev, assistantMessage]);
+			setCurrentParentId(assistantMessageId);
+		},
+		onError: (error: Error, variables: { messages: Message[]; userMessageId: string }) => {
+			console.error("Failed to send message:", error);
+			const assistantErrorMessageId = uuidv4();
+			const assistantErrorMessage: ChatMessage = {
+				id: assistantErrorMessageId,
+				parentId: variables.userMessageId,
+				role: "assistant",
+				content: `Error: ${error.message}`,
+			};
+			setChatTree((prev) => [...prev, assistantErrorMessage]);
+			setCurrentParentId(assistantErrorMessageId);
+		},
+	});
+
 	const handleSendMessage = async () => {
 		if (!input.trim()) return;
 
 		const newContent = input;
 		let newParentIdForUserMessage = currentParentId;
-		let role: "user" | "assistant" | "system" = "user";
+		let userMessageId = uuidv4(); // ID for the new or edited message
 
 		if (editingMessage) {
 			newParentIdForUserMessage = editingMessage.parentId;
-			role = "user";
 		}
 
-		const userMessageId = uuidv4();
 		const newUserMessage: ChatMessage = {
 			id: userMessageId,
 			parentId: newParentIdForUserMessage,
-			role: role,
+			role: "user",
 			content: newContent,
 		};
 
-		setChatTree((prev) => [...prev, newUserMessage]);
+		const updatedChatTreeWithUserMessage = [...chatTree, newUserMessage];
+		setChatTree(updatedChatTreeWithUserMessage);
 		setInput("");
 		setEditingMessage(null);
 
-		try {
-			// Construct message history
-			const getMessageHistory = (
-				allMessages: ChatTree,
-				currentMessage: ChatMessage,
-			): Message[] => {
-				const history: Message[] = [];
-				let msg: ChatMessage | undefined = currentMessage;
-				while (msg) {
-					history.unshift({ role: msg.role, content: msg.content });
-					msg = allMessages.find((m) => m.id === msg!.parentId);
-				}
-				// Ensure the first message is 'user' if it's not system, or handle system message if present
-				// For now, let's assume the API handles the roles correctly based on the order.
-				// If a system message is needed, it should be explicitly added or handled by the API.
-				return history;
-			};
-
-			const messagesForApi = getMessageHistory(chatTree, newUserMessage);
-
-
-			const response = await fetch("/api/chat", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ messages: messagesForApi }),
-			});
-
-			if (!response.ok) {
-				const errorResponse = await response.json().catch(() => ({ error: "Unknown API error" }));
-				const assistantErrorMessageId = uuidv4();
-				const assistantErrorMessage: ChatMessage = {
-					id: assistantErrorMessageId,
-					parentId: userMessageId,
-					role: "assistant",
-					content: `Error: ${errorResponse.error || response.statusText}`,
-				};
-				setChatTree((prev) => [...prev, assistantErrorMessage]);
-				setCurrentParentId(assistantErrorMessageId); // Focus on this error message branch
-				return;
+		const getMessageHistory = (
+			allMessages: ChatTree,
+			currentMessage: ChatMessage,
+		): Message[] => {
+			const history: Message[] = [];
+			let msg: ChatMessage | undefined = currentMessage;
+			while (msg) {
+				history.unshift({ role: msg.role, content: msg.content });
+				msg = allMessages.find((m) => m.id === msg!.parentId);
 			}
+			return history;
+		};
 
-			const data = await response.json();
-			const assistantMessageId = uuidv4();
-			const assistantMessage: ChatMessage = {
-				id: assistantMessageId,
-				parentId: userMessageId,
-				role: "assistant",
-				content: data.message.content,
-			};
-			setChatTree((prev) => [...prev, assistantMessage]);
-			// After sending, the main chat view should show the branch containing this new assistant message.
-			// So, currentParentId should be the parent of the user message, to show that conversation.
-			// OR, it should be the assistant message itself if we want to auto-reply to it.
-			// The rule "default reply is to the latest message" implies setting it to assistantMessageId.
-			setCurrentParentId(assistantMessageId);
-		} catch (error) {
-			console.error("Failed to send message:", error);
-			const assistantErrorMessageId = uuidv4();
-			const assistantErrorMessage: ChatMessage = {
-				id: assistantErrorMessageId,
-				parentId: userMessageId,
-				role: "assistant",
-				content: "Error: Could not connect to the server.",
-			};
-			setChatTree((prev) => [...prev, assistantErrorMessage]);
-			setCurrentParentId(assistantErrorMessageId);
-		}
+		const messagesForApi = getMessageHistory(updatedChatTreeWithUserMessage, newUserMessage);
+
+		sendMessageMutation.mutate({ messages: messagesForApi, userMessageId: newUserMessage.id });
 	};
 
 	const handleReplyClick = (messageId: string) => {
