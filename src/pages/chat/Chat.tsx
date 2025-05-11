@@ -30,6 +30,7 @@ export const Chat = () => {
 	// null means the root (top-level messages).
 	const [currentParentId, setCurrentParentId] = useState<string | null>(null);
 	const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+	const [replyTargetId, setReplyTargetId] = useState<string | null>(null); // New state for reply target
 	const [previousParentIdBeforeEdit, setPreviousParentIdBeforeEdit] = useState<string | null>(null);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -88,11 +89,15 @@ export const Chat = () => {
 		if (!input.trim()) return;
 
 		const newContent = input;
-		let newParentIdForUserMessage = currentParentId;
+		let newParentIdForUserMessage: string | null = null;
 		let userMessageId = uuidv4(); // ID for the new or edited message
 
 		if (editingMessage) {
 			newParentIdForUserMessage = editingMessage.parentId;
+		} else if (replyTargetId) {
+			newParentIdForUserMessage = replyTargetId;
+		} else {
+			newParentIdForUserMessage = currentParentId;
 		}
 
 		const newUserMessage: ChatMessage = {
@@ -106,6 +111,7 @@ export const Chat = () => {
 		setChatTree(updatedChatTreeWithUserMessage);
 		setInput("");
 		setEditingMessage(null);
+		setReplyTargetId(null); // Reset reply target after sending
 
 		const getMessageHistory = (
 			allMessages: ChatTree,
@@ -126,9 +132,10 @@ export const Chat = () => {
 	};
 
 	const handleReplyClick = (messageId: string) => {
-		setCurrentParentId(messageId); // Set view to children of this message, and next input replies to it
-		setEditingMessage(null);
-		setInput("");
+		setReplyTargetId(messageId); // Set the target for the next reply
+		setEditingMessage(null); // Ensure not in editing mode
+		setInput(""); // Clear input for fresh reply
+		// Do not change currentParentId here to keep the current view stable
 	};
 
 	const handleEditClick = (messageToEdit: ChatMessage) => {
@@ -136,13 +143,14 @@ export const Chat = () => {
 		setInput(messageToEdit.content);
 		// When editing, the new message will branch from the *original parent* of the message being edited.
 		// The main chat view should show the context of where this new branch will appear.
-		setCurrentParentId(messageToEdit.parentId);
+		// setCurrentParentId(messageToEdit.parentId); // 編集モードでも表示ブランチは変更しない
 		setEditingMessage(messageToEdit);
 	};
 
 	const cancelEdit = () => {
 		setInput("");
 		setEditingMessage(null);
+		setReplyTargetId(null); // Also cancel reply targeting
 		setCurrentParentId(previousParentIdBeforeEdit);
 	};
 
@@ -328,9 +336,11 @@ export const Chat = () => {
 						placeholder={
 							editingMessage
 								? `Editing (will branch from original parent): ${editingMessage.content.substring(0, 20)}...`
-								: currentParentId
-									? "Reply to selected thread..." // Placeholder reflects currentParentId from sidebar/reply
-									: "Start a new thread..."
+								: replyTargetId
+									? "Replying to a specific message..."
+									: currentParentId
+										? "Reply to selected thread..." // Placeholder reflects currentParentId from sidebar/reply
+										: "Start a new thread..."
 						}
 						style={{ flexGrow: 1 }}
 						onKeyDown={(event) => {
