@@ -9,6 +9,7 @@ import {
 	ActionIcon,
 	Text,
 	Box,
+	Alert,
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { Message } from "../../types/Message";
@@ -160,26 +161,40 @@ export const Chat = () => {
 		currentEditingMessage: ChatMessage | null,
 		onEditClick: (msg: ChatMessage) => void,
 		onReplyClick: (id: string) => void,
-	) => (
-		<Paper shadow="xs" p="md" mb="sm" withBorder>
-			<Group justify="space-between">
-				<Text c={message.role === "user" ? "blue" : "green"} fw={500}>
-					{message.role === "user" ? "You" : "Assistant"}
-				</Text>
-				<Group gap="xs">
-					{message.role === "user" && message.id !== currentEditingMessage?.id && (
-						<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
-							<IconPencil size={18} />
-						</ActionIcon>
-					)}
+	) => {
+		if (message.role === "user") {
+			return (
+				<Group justify="flex-end" mb="sm">
+					<Alert
+						color="gray"
+						style={{ maxWidth: "80%", whiteSpace: "pre-wrap" }}
+					>
+						<Text>{message.content}</Text>
+						<Group justify="flex-end" gap="xs" mt="xs">
+							{message.id !== currentEditingMessage?.id && (
+								<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
+									<IconPencil size={16} />
+								</ActionIcon>
+							)}
+							<ActionIcon variant="subtle" onClick={() => onReplyClick(message.id)} title="Reply to this">
+								<IconMessageReply size={16} />
+							</ActionIcon>
+						</Group>
+					</Alert>
+				</Group>
+			);
+		}
+		return (
+			<Box p="md" mb="sm" style={{ maxWidth: "80%" }}>
+				<Group justify="flex-end">
 					<ActionIcon variant="subtle" onClick={() => onReplyClick(message.id)} title="Reply to this">
 						<IconMessageReply size={18} />
 					</ActionIcon>
 				</Group>
-			</Group>
-			<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
-		</Paper>
-	);
+				<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
+			</Box>
+		);
+	};
 
 	// Recursive function to render a message and its children (a full branch)
 	const renderMessageBranch = (
@@ -189,7 +204,7 @@ export const Chat = () => {
 		currentEditingMessage: ChatMessage | null,
 		onEditClick: (msg: ChatMessage) => void,
 		onReplyClick: (id: string) => void,
-	): JSX.Element => {
+	): React.JSX.Element => {
 		const children = allMessages.filter((child) => child.parentId === message.id);
 		return (
 			<Box key={message.id} style={{ marginLeft: `${level * 20}px` }}>
