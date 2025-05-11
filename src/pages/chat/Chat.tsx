@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Message } from "../../types/Message";
 import { v4 as uuidv4 } from "uuid";
-import { IconMessageReply, IconPencil } from "@tabler/icons-react";
+import { IconMessage, IconMessageReply, IconPencil } from "@tabler/icons-react";
 import { ChatSidebar } from "../../components/ChatSidebar"; // Import the sidebar
 
 // ChatMessage type is used by both Chat and ChatSidebar.
@@ -165,7 +165,6 @@ export const Chat = () => {
 			return (
 				<Group justify="flex-end" mb="sm">
 					<Alert
-						color="gray"
 						style={{ maxWidth: "80%", whiteSpace: "pre-wrap" }}
 					>
 						<Text>{message.content}</Text>
@@ -175,9 +174,6 @@ export const Chat = () => {
 									<IconPencil size={16} />
 								</ActionIcon>
 							)}
-							<ActionIcon variant="subtle" onClick={() => onReplyClick(message.id)} title="Reply to this">
-								<IconMessageReply size={16} />
-							</ActionIcon>
 						</Group>
 					</Alert>
 				</Group>
@@ -185,12 +181,10 @@ export const Chat = () => {
 		}
 		return (
 			<Box p="md" mb="sm" style={{ maxWidth: "80%" }}>
-				<Group justify="flex-end">
-					<ActionIcon variant="subtle" onClick={() => onReplyClick(message.id)} title="Reply to this">
-						<IconMessageReply size={18} />
-					</ActionIcon>
-				</Group>
 				<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
+				<ActionIcon variant="subtle" onClick={() => onReplyClick(message.id)} title="Reply to this">
+					<IconMessage size={18} />
+				</ActionIcon>
 			</Box>
 		);
 	};
