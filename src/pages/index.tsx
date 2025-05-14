@@ -1,5 +1,5 @@
 import { Button, Grid, Group } from "@mantine/core";
-import { Chat } from "./chat/Chat";
+import { Chat } from "../features/chat/Chat";
 
 export default function IndexPage() {
 	return (

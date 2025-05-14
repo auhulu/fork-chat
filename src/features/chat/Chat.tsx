@@ -9,14 +9,12 @@ import {
 	ActionIcon,
 	Text,
 	Box,
-	Alert,
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Message, ChatMessage, ChatTree } from "../../types/Message";
 import { v4 as uuidv4 } from "uuid";
-import { IconMessage, IconPencil } from "@tabler/icons-react"; // IconMessageReply is not used
-import { ChatSidebar } from "../../components/ChatSidebar"; // Import the sidebar
+import { IconArrowUp, IconMessage, IconPencil } from "@tabler/icons-react"; // IconMessageReply is not used
 
 export const Chat = () => {
 	const [chatTree, setChatTree] = useState<ChatTree>([]);
@@ -138,20 +136,15 @@ export const Chat = () => {
 	) => {
 		if (message.role === "user") {
 			return (
-				<Group justify="flex-end" mb="sm">
-					<Alert
-						style={{ maxWidth: "80%", whiteSpace: "pre-wrap" }}
-					>
-						<Text>{message.content}</Text>
-						<Group justify="flex-end" gap="xs" mt="xs">
-							{message.id !== currentEditingMessage?.id && (
-								<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
-									<IconPencil size={16} />
-								</ActionIcon>
-							)}
-						</Group>
-					</Alert>
-				</Group>
+				<Paper withBorder shadow='md' p='md'>
+
+					<Text>{message.content}</Text>
+					{message.id !== currentEditingMessage?.id && (
+						<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
+							<IconPencil size={16} />
+						</ActionIcon>
+					)}
+				</Paper>
 			);
 		}
 		return (
@@ -221,9 +214,6 @@ export const Chat = () => {
 								handleReplyClick,
 							),
 						)}
-					{chatTree.filter((m) => m.parentId === null).length === 0 && (
-						<Text c="dimmed">No messages yet. Start a new conversation!</Text>
-					)}
 				</>
 			);
 		}
@@ -282,24 +272,21 @@ export const Chat = () => {
 	};
 
 	return (
-		<Group wrap="nowrap" align="flex-start" style={{ height: "100vh" }}>
-			<ChatSidebar
-				chatTree={chatTree}
-				onSelectNode={handleSidebarNodeSelect}
-				currentNodeId={currentParentId} // The sidebar needs to know which node's children are being displayed
-			/>
-			<Stack style={{ flexGrow: 1, height: "100vh", padding: "1rem" }}>
-				<ScrollArea viewportRef={scrollAreaRef} style={{ flexGrow: 1, marginBottom: "1rem" }}>
-					<DisplayedChatMessages
-						chatTree={chatTree}
-						currentParentId={currentParentId}
-						editingMessage={editingMessage}
-						handleEditClick={handleEditClick}
-						handleReplyClick={handleReplyClick}
-					/>
-				</ScrollArea>
+		<Stack style={{ flexGrow: 1, height: "100vh", padding: "1rem" }}>
+			<ScrollArea viewportRef={scrollAreaRef} style={{ flexGrow: 1, marginBottom: "1rem" }}>
+				<DisplayedChatMessages
+					chatTree={chatTree}
+					currentParentId={currentParentId}
+					editingMessage={editingMessage}
+					handleEditClick={handleEditClick}
+					handleReplyClick={handleReplyClick}
+				/>
+			</ScrollArea>
+			<Paper withBorder shadow='md' p='md'>
 				<Group>
 					<Textarea
+					   autosize
+						variant="unstyled"
 						value={input}
 						onChange={(event) => setInput(event.currentTarget.value)}
 						placeholder={
@@ -312,23 +299,17 @@ export const Chat = () => {
 										: "Start a new thread..."
 						}
 						style={{ flexGrow: 1 }}
-						onKeyDown={(event) => {
-							if (event.key === "Enter" && !event.shiftKey) {
-								event.preventDefault();
-								handleSendMessage();
-							}
-						}}
 					/>
-					<Button onClick={handleSendMessage}>
-						{editingMessage ? "Save Edit & Branch" : "Send"}
-					</Button>
+					<ActionIcon onClick={handleSendMessage} color='black' radius='xl' size='lg'>
+						<IconArrowUp />
+					</ActionIcon>
 				</Group>
-				{editingMessage && (
-					<Button variant="outline" size="xs" onClick={cancelEdit} style={{ marginTop: "5px" }}>
-						Cancel Edit
-					</Button>
-				)}
-			</Stack>
-		</Group>
+			</Paper>
+			{editingMessage && (
+				<Button variant="outline" size="xs" onClick={cancelEdit} style={{ marginTop: "5px" }}>
+					Cancel Edit
+				</Button>
+			)}
+		</Stack>
 	);
 };
