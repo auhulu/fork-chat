@@ -242,10 +242,6 @@ export const Chat = () => {
 							handleEditClick,
 							handleReplyClick,
 						)}
-						{/* If the current ancestorMessage is the last in the path (i.e., it's the currentParentId message),
-						    then render its children using renderMessageBranch.
-						    This ensures that only the direct lineage and the children of the selected node are shown.
-						*/}
 						{index === ancestorPath.length - 1 &&
 							chatTree
 								.filter((child) => child.parentId === ancestorMessage.id)
@@ -263,12 +259,6 @@ export const Chat = () => {
 				))}
 			</>
 		);
-	};
-
-	const handleSidebarNodeSelect = (nodeId: string | null) => {
-		setCurrentParentId(nodeId); // This will make renderChatMessages display children of nodeId
-		setEditingMessage(null); // Clear any editing state
-		setInput(""); // Clear input
 	};
 
 	return (
@@ -289,15 +279,6 @@ export const Chat = () => {
 						variant="unstyled"
 						value={input}
 						onChange={(event) => setInput(event.currentTarget.value)}
-						placeholder={
-							editingMessage
-								? `Editing (will branch from original parent): ${editingMessage.content.substring(0, 20)}...`
-								: replyTargetId
-									? "Replying to a specific message..."
-									: currentParentId
-										? "Reply to selected thread..." // Placeholder reflects currentParentId from sidebar/reply
-										: "Start a new thread..."
-						}
 						style={{ flexGrow: 1 }}
 					/>
 					<ActionIcon onClick={handleSendMessage} color='black' radius='xl' size='lg'>
