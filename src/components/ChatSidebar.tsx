@@ -46,9 +46,6 @@ export const ChatSidebar = ({
 
 	return (
 		<Box style={{ width: 300, borderRight: "1px solid var(--mantine-color-divider)", padding: "var(--mantine-spacing-md)" }}>
-			<Text size="lg" fw={700} mb="md">
-				Chat History
-			</Text>
 			<NavLink
 				label="Start New Thread (Root)"
 				onClick={() => onSelectNode(null)}
