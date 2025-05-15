@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Message } from "../../types/Message";
+import { Message } from "../../types/message";
 import { getMessage } from "../../features/backend/getMessage";
 
 export default async function handler(
