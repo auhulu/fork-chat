@@ -22,11 +22,13 @@ import { getEndMessage } from "../libs/getEndMessage";
 export const AssistantMessage = ({
 	message,
 	chatTree,
+	currentId,
 	setCurrentId,
 	mutation,
 }: {
 	message: ChatMessage;
 	chatTree: ChatTree;
+	currentId: string | null;
 	setCurrentId: (id: string | null) => void;
 	mutation: UseMutationResult<
 		ChatMessage,
@@ -35,12 +37,11 @@ export const AssistantMessage = ({
 		unknown
 	>;
 }) => {
-	const [isReplied, setIsReplied] = useState(false);
 	const [editMessage, setEditMessage] = useState("");
-	const [isBranch, setIsBranch] = useState(false);
+	const [mode, setMode] = useState("");
 	const childMessages = chatTree.filter((msg) => msg.parentId === message.id);
 	const send = (messageText: string) => {
-		setIsReplied(false);
+		setMode("");
 		setEditMessage("");
 		mutation.mutate({ messageText, id: message.id });
 	};
@@ -50,27 +51,29 @@ export const AssistantMessage = ({
 				<Paper p="md">
 					<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
 					<Group>
-						<ActionIcon
-							variant="subtle"
-							color="black"
-							onClick={() => setIsReplied(true)}
-						>
-							<IconMessage size={20} />
-						</ActionIcon>
+						{message.id !== currentId && (
+							<ActionIcon
+								variant="subtle"
+								color="black"
+								onClick={() => setMode("reply")}
+							>
+								<IconMessage size={20} />
+							</ActionIcon>
+						)}
 						{childMessages.length > 1 && (
 							<Button
 								size="compact-md"
 								variant="subtle"
 								color="black"
 								leftSection={<IconGitMerge size={20} />}
-								onClick={() => setIsBranch(true)}
+								onClick={() => setMode("branch")}
 							>
 								{childMessages.length}
 							</Button>
 						)}
 					</Group>
 				</Paper>
-				{isReplied && (
+				{mode === "reply" && (
 					<Paper p="md" withBorder shadow="xs">
 						<Group>
 							<Textarea
@@ -90,7 +93,7 @@ export const AssistantMessage = ({
 									<IconArrowUp />
 								</ActionIcon>
 								<ActionIcon
-									onClick={() => setIsReplied(false)}
+									onClick={() => setMode("")}
 									color="gray"
 									radius="xl"
 									size="md"
@@ -101,7 +104,7 @@ export const AssistantMessage = ({
 						</Group>
 					</Paper>
 				)}
-				{isBranch &&
+				{mode === "branch" &&
 					childMessages.map((message) => (
 						<Paper
 							ml="xl"
@@ -111,7 +114,7 @@ export const AssistantMessage = ({
 							key={message.id}
 							onClick={() => {
 								setCurrentId(getEndMessage(chatTree, message.id).id);
-								setIsBranch(false);
+								setMode("");
 							}}
 							style={{ cursor: "pointer" }}
 						>
@@ -119,7 +122,7 @@ export const AssistantMessage = ({
 						</Paper>
 					))}
 			</Stack>
-			{isReplied && <Divider variant="dashed" my="xl" />}
+			{mode !== "" && <Divider variant="dashed" my="xl" />}
 		</>
 	);
 };

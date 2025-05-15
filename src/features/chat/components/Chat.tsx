@@ -87,6 +87,7 @@ export const Chat = () => {
 							<AssistantMessage
 								key={message.id}
 								message={message}
+								currentId={currntId}
 								setCurrentId={setCurrentId}
 								chatTree={chatTree}
 								mutation={sendMessageMutation}
