@@ -24,11 +24,15 @@ export const UserMessage = ({
 		mutation.mutate({ messageText, id: message.parentId });
 	};
 	return (
-		<Paper withBorder shadow="md" p="md">
+		<Paper withBorder shadow="xs" p="md">
 			{!isEdit && (
 				<>
 					<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
-					<ActionIcon variant="subtle" onClick={() => setIsEdit(true)}>
+					<ActionIcon
+						variant="subtle"
+						color="black"
+						onClick={() => setIsEdit(true)}
+					>
 						<IconPencil size={16} />
 					</ActionIcon>
 				</>

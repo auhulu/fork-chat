@@ -93,7 +93,7 @@ export const Chat = () => {
 					)}
 				</Stack>
 			</ScrollArea>
-			<Paper withBorder shadow="md" p="md">
+			<Paper withBorder shadow="xs" p="md">
 				<Group>
 					<Textarea
 						autosize
@@ -103,9 +103,10 @@ export const Chat = () => {
 						style={{ flexGrow: 1 }}
 					/>
 					<ActionIcon
-						onClick={() =>
-							sendMessageMutation.mutate({ messageText: input, id: currntId })
-						}
+						onClick={() => {
+							setInput("");
+							sendMessageMutation.mutate({ messageText: input, id: currntId });
+						}}
 						color="black"
 						radius="xl"
 						size="lg"
