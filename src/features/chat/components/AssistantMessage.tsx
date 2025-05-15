@@ -66,7 +66,10 @@ export const AssistantMessage = ({
 								variant="subtle"
 								color="black"
 								leftSection={<IconGitMerge size={20} />}
-								onClick={() => setMode("branch")}
+								onClick={() => {
+									if (mode !== "branch") setMode("branch");
+									else setMode("");
+								}}
 							>
 								{childMessages.length}
 							</Button>
