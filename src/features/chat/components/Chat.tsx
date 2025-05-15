@@ -8,6 +8,7 @@ import {
 	ActionIcon,
 	Text,
 	Box,
+	FocusTrap,
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -98,13 +99,15 @@ export const Chat = () => {
 			</ScrollArea>
 			<Paper withBorder shadow="xs" p="md">
 				<Group>
-					<Textarea
-						autosize
-						variant="unstyled"
-						value={input}
-						onChange={(event) => setInput(event.currentTarget.value)}
-						style={{ flexGrow: 1 }}
-					/>
+					<FocusTrap active={true}>
+						<Textarea
+							autosize
+							variant="unstyled"
+							value={input}
+							onChange={(event) => setInput(event.currentTarget.value)}
+							style={{ flexGrow: 1 }}
+						/>
+					</FocusTrap>
 					<ActionIcon
 						onClick={() => {
 							setInput("");
