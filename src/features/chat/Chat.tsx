@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Message, ChatMessage, ChatTree } from "../../types/Message";
 import { v4 as uuidv4 } from "uuid";
-import { IconArrowUp, IconMessage, IconPencil } from "@tabler/icons-react"; // IconMessageReply is not used
+import { IconArrowUp, IconMessage, IconPencil, IconX } from "@tabler/icons-react"; // IconMessageReply is not used
 
 export const Chat = () => {
 	const [chatTree, setChatTree] = useState<ChatTree>([]);
@@ -135,15 +135,35 @@ export const Chat = () => {
 		onReplyClick: (id: string) => void,
 	) => {
 		if (message.role === "user") {
+			if (message.id === currentEditingMessage?.id) {
+				return (
+					<Paper withBorder shadow='md' p='md'>
+						<Group>
+							<Textarea
+								autosize
+								variant="unstyled"
+								value={input}
+								onChange={(event) => setInput(event.currentTarget.value)}
+								style={{ flexGrow: 1 }}
+							/>
+							<Group>
+								<ActionIcon onClick={handleSendMessage} color='black' radius='xl' size='md'>
+									<IconArrowUp />
+								</ActionIcon>
+								<ActionIcon onClick={cancelEdit} color='gray' radius='xl' size='md'>
+									<IconX />
+								</ActionIcon>
+							</Group>
+						</Group>
+					</Paper>
+				);
+			}
 			return (
 				<Paper withBorder shadow='md' p='md'>
-
 					<Text>{message.content}</Text>
-					{message.id !== currentEditingMessage?.id && (
-						<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
-							<IconPencil size={16} />
-						</ActionIcon>
-					)}
+					<ActionIcon variant="subtle" onClick={() => onEditClick(message)} title="Edit & Branch">
+						<IconPencil size={16} />
+					</ActionIcon>
 				</Paper>
 			);
 		}
@@ -275,22 +295,18 @@ export const Chat = () => {
 			<Paper withBorder shadow='md' p='md'>
 				<Group>
 					<Textarea
-					   autosize
+						autosize
 						variant="unstyled"
 						value={input}
 						onChange={(event) => setInput(event.currentTarget.value)}
 						style={{ flexGrow: 1 }}
+						disabled={!!editingMessage}
 					/>
 					<ActionIcon onClick={handleSendMessage} color='black' radius='xl' size='lg'>
 						<IconArrowUp />
 					</ActionIcon>
 				</Group>
 			</Paper>
-			{editingMessage && (
-				<Button variant="outline" size="xs" onClick={cancelEdit} style={{ marginTop: "5px" }}>
-					Cancel Edit
-				</Button>
-			)}
 		</Stack>
 	);
 };
