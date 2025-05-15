@@ -33,7 +33,7 @@ export const UserMessage = ({
 						color="black"
 						onClick={() => setIsEdit(true)}
 					>
-						<IconPencil size={16} />
+						<IconPencil size={20} />
 					</ActionIcon>
 				</>
 			)}

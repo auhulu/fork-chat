@@ -1,5 +1,6 @@
 import {
 	ActionIcon,
+	Button,
 	Divider,
 	Group,
 	Paper,
@@ -7,16 +8,26 @@ import {
 	Text,
 	Textarea,
 } from "@mantine/core";
-import { ChatMessage } from "../types/chat";
-import { IconArrowUp, IconMessage, IconX } from "@tabler/icons-react";
+import { ChatMessage, ChatTree } from "../types/chat";
+import {
+	IconArrowUp,
+	IconGitMerge,
+	IconMessage,
+	IconX,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import { UseMutationResult } from "@tanstack/react-query";
+import { getEndMessage } from "../libs/getEndMessage";
 
 export const AssistantMessage = ({
 	message,
+	chatTree,
+	setCurrentId,
 	mutation,
 }: {
 	message: ChatMessage;
+	chatTree: ChatTree;
+	setCurrentId: (id: string | null) => void;
 	mutation: UseMutationResult<
 		ChatMessage,
 		Error,
@@ -26,6 +37,8 @@ export const AssistantMessage = ({
 }) => {
 	const [isReplied, setIsReplied] = useState(false);
 	const [editMessage, setEditMessage] = useState("");
+	const [isBranch, setIsBranch] = useState(false);
+	const childMessages = chatTree.filter((msg) => msg.parentId === message.id);
 	const send = (messageText: string) => {
 		setIsReplied(false);
 		setEditMessage("");
@@ -36,13 +49,26 @@ export const AssistantMessage = ({
 			<Stack>
 				<Paper p="md">
 					<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
-					<ActionIcon
-						variant="subtle"
-						color="black"
-						onClick={() => setIsReplied(true)}
-					>
-						<IconMessage size={16} />
-					</ActionIcon>
+					<Group>
+						<ActionIcon
+							variant="subtle"
+							color="black"
+							onClick={() => setIsReplied(true)}
+						>
+							<IconMessage size={20} />
+						</ActionIcon>
+						{childMessages.length > 1 && (
+							<Button
+								size="compact-md"
+								variant="subtle"
+								color="black"
+								leftSection={<IconGitMerge size={20} />}
+								onClick={() => setIsBranch(true)}
+							>
+								{childMessages.length}
+							</Button>
+						)}
+					</Group>
 				</Paper>
 				{isReplied && (
 					<Paper p="md" withBorder shadow="xs">
@@ -75,6 +101,23 @@ export const AssistantMessage = ({
 						</Group>
 					</Paper>
 				)}
+				{isBranch &&
+					childMessages.map((message) => (
+						<Paper
+							ml="xl"
+							withBorder
+							shadow="xs"
+							p="md"
+							key={message.id}
+							onClick={() => {
+								setCurrentId(getEndMessage(chatTree, message.id).id);
+								setIsBranch(false);
+							}}
+							style={{ cursor: "pointer" }}
+						>
+							<Text style={{ whiteSpace: "pre-wrap" }}>{message.content}</Text>
+						</Paper>
+					))}
 			</Stack>
 			{isReplied && <Divider variant="dashed" my="xl" />}
 		</>

@@ -13,7 +13,7 @@ export const getMessage = async (messages: Message[]): Promise<Message> => {
 			parts: [{ text: message.content }],
 		}));
 	const chat = await ai.chats.create({
-		model: "gemini-2.0-flash",
+		model: "gemini-1.5-flash",
 		config: { systemInstruction: system },
 		history: history.slice(0, -1),
 	});
