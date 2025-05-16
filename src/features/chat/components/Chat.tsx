@@ -12,11 +12,11 @@ import {
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Message } from "../../../types/message";
 import { v4 as uuidv4 } from "uuid";
 import { IconArrowUp } from "@tabler/icons-react";
 import { ChatMessage, ChatTree } from "../types/chat";
 import { getHistory } from "../libs/getHistory";
+import { postMessages } from "../libs/postMessages";
 import { UserMessage } from "./UserMessage";
 import { AssistantMessage } from "./AssistantMessage";
 
@@ -55,13 +55,7 @@ export const Chat = () => {
 			setChatTree(newChatTree);
 			setCurrentId(chatMessage.id);
 			const history = getHistory(newChatTree, chatMessage);
-			const response = await fetch("/api/chat", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ messages: history }),
-			});
-			if (!response.ok) throw new Error("エラーが発生しました");
-			const { message } = (await response.json()) as { message: Message };
+			const message = await postMessages(history)
 			return { ...message, parentId: chatMessage.id, id: uuidv4() };
 		},
 		onSuccess: (message: ChatMessage) => {
