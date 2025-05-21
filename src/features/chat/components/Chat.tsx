@@ -9,6 +9,8 @@ import {
 	Text,
 	Box,
 	FocusTrap,
+	Center,
+	Loader,
 } from "@mantine/core";
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -55,7 +57,7 @@ export const Chat = () => {
 			setChatTree(newChatTree);
 			setCurrentId(chatMessage.id);
 			const history = getHistory(newChatTree, chatMessage);
-			const message = await postMessages(history)
+			const message = await postMessages(history);
 			return { ...message, parentId: chatMessage.id, id: uuidv4() };
 		},
 		onSuccess: (message: ChatMessage) => {
@@ -88,6 +90,11 @@ export const Chat = () => {
 								mutation={sendMessageMutation}
 							/>
 						),
+					)}
+					{sendMessageMutation.isPending && (
+						<Center>
+							<Loader color="gray" type="dots" />
+						</Center>
 					)}
 				</Stack>
 			</ScrollArea>
